@@ -1,3 +1,7 @@
-data/*
+data/_background_noise_/
+data/raw/
+data/train/
+data/valid/
+data/test/
 .DS_Store
 __pycache__

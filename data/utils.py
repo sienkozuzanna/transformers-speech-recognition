@@ -1,5 +1,5 @@
-from models.dataset import SpeechCommandsDataset, Compose
-from models.transforms import MelSpectrogram, MFCC, Normalize, Flatten, FeatureConfig
+from .dataset import SpeechCommandsDataset, Compose
+from .transforms import MelSpectrogram, MFCC, Normalize, Flatten, FeatureConfig
 
 def get_datasets(data_format: str, cfg: FeatureConfig | None = None, train_path="data/train", valid_path="data/valid") -> tuple[SpeechCommandsDataset, SpeechCommandsDataset]:
     """
