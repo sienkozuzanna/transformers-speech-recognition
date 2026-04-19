@@ -1,7 +1,7 @@
 from .dataset import SpeechCommandsDataset, Compose
 from .transforms import MelSpectrogram, MFCC, Normalize, Flatten, FeatureConfig
 
-def get_datasets(data_format: str, cfg: FeatureConfig | None = None, train_path="data/train", valid_path="data/valid") -> tuple[SpeechCommandsDataset, SpeechCommandsDataset]:
+def get_datasets(data_format: str, cfg: FeatureConfig | None = None, train_path="data/train", valid_path="data/valid", test_path="data/test") -> tuple[SpeechCommandsDataset, SpeechCommandsDataset]:
     """
     Returns train and valid datasets with the appropriate transforms based on the data_format.
 
@@ -15,10 +15,12 @@ def get_datasets(data_format: str, cfg: FeatureConfig | None = None, train_path=
     - cfg: FeatureConfig, optional configuration for the transforms 
     - train_path: str, path to the training data directory
     - valid_path: str, path to the validation data directory
+    - test_path: str, path to the test data directory
 
     Returns:
         - train_dataset: SpeechCommandsDataset for training
         - valid_dataset: SpeechCommandsDataset for validation
+        - test_dataset: SpeechCommandsDataset for testing
     """
 
     if cfg is None:
@@ -51,6 +53,7 @@ def get_datasets(data_format: str, cfg: FeatureConfig | None = None, train_path=
 
     train_ds = SpeechCommandsDataset(train_path, cfg =cfg, transform=transform)
     valid_ds = SpeechCommandsDataset(valid_path, cfg =cfg, transform=transform)
+    test_ds = SpeechCommandsDataset(test_path, cfg =cfg, transform=transform)
 
-    return train_ds, valid_ds
+    return train_ds, valid_ds, test_ds
     
