@@ -9,12 +9,12 @@ from .transforms import FeatureConfig
 
 #label mapping
 TARGET_WORDS = {'yes', 'no', 'up', 'down', 'left', 'right', 'on', 'off', 'stop', 'go'}
-CLASSES      = sorted(TARGET_WORDS) + ['silence', 'unknown']   # 12 klas
+CLASSES = sorted(TARGET_WORDS) + ['silence', 'unknown']   # 12 classes
 CLASS_TO_IDX = {c: i for i, c in enumerate(CLASSES)}
 
 
 def map_label(word: str) -> str:
-    if word == 'silence':    return 'silence'
+    if word == 'silence': return 'silence'
     if word in TARGET_WORDS: return word
     return 'unknown'
 
@@ -54,7 +54,7 @@ class SpeechCommandsDataset(Dataset):
         for word_dir in sorted(self.split_dir.iterdir()):
             if not word_dir.is_dir():
                 continue
-            label  = map_label(word_dir.name)
+            label = map_label(word_dir.name)
             target = CLASS_TO_IDX[label]
             for wav_path in sorted(word_dir.glob('*.wav')):
                 self.samples.append((wav_path, target))
@@ -62,7 +62,7 @@ class SpeechCommandsDataset(Dataset):
     def _load_waveform(self, path: Path) -> torch.Tensor:
         y, _ = librosa.load(str(path), sr=self.cfg.sample_rate, mono=True)
         y = librosa.util.fix_length(y, size=self.cfg.num_samples)
-        return torch.from_numpy(y).unsqueeze(0).float()    # [1, n_samples]
+        return torch.from_numpy(y).unsqueeze(0).float() # [1, n_samples]
 
     def __len__(self) -> int:
         return len(self.samples)
@@ -86,10 +86,7 @@ class SpeechCommandsDataset(Dataset):
         for idx in range(len(self)):
             x, target = self[idx]
             if x.dim() != 1:
-                raise ValueError(
-                    f"to_arrays() oczekuje 1D tensora, dostał {x.dim()}D. "
-                    "Dodaj Flatten() na końcu transform."
-                )
+                raise ValueError(f"to_arrays() requires transform that returns 1D tensor, but got shape {x.shape}. Consider adding a Flatten() transform at the end of your transform pipeline.")
             X_list.append(x.numpy())
             y_list.append(target)
 
