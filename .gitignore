@@ -5,3 +5,4 @@ data/valid/
 data/test/
 .DS_Store
 __pycache__
+checkpoints/

@@ -101,3 +101,12 @@ class SpeechCommandsDataset(Dataset):
         for _, target in self.samples:
             counts[CLASSES[target]] += 1
         return counts
+    
+
+class CachedDataset(Dataset):
+    def __init__(self, cache_dir):
+        self.files = sorted(Path(cache_dir).glob('*.pt'), key=lambda p: int(p.stem))
+    def __len__(self):
+        return len(self.files)
+    def __getitem__(self, i):
+        return torch.load(self.files[i], weights_only=True)
