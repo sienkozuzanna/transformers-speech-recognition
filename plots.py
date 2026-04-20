@@ -88,7 +88,7 @@ def plot_per_class_metrics(labels, preds, classes=CLASSES, title='Per-class Metr
         'Recall':    [report[c]['recall']    for c in classes],
         'F1':        [report[c]['f1-score']  for c in classes],
     }
-    colors = [PALETTE['train'], PALETTE['valid'], PALETTE['success']]
+    colors = sns.color_palette('deep', n_colors=3)
  
     x = np.arange(len(classes))
     width = 0.26
