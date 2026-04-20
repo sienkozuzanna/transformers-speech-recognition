@@ -72,7 +72,8 @@ def plot_confusion_matrix(cm, classes=CLASSES, normalize=True, title='Confusion 
 
 def plot_per_class_metrics(labels, preds, classes=CLASSES, title='Per-class Metrics'):
     """
-    Bar chart of per-class precision, recall, and F1.
+    Bar chart of per-class precision, recall, and F1,
+    with value labels on top of each bar and legend placed below the title.
  
     Args:
         labels: true labels (numpy array)
@@ -91,18 +92,33 @@ def plot_per_class_metrics(labels, preds, classes=CLASSES, title='Per-class Metr
  
     x = np.arange(len(classes))
     width = 0.26
-    fig, ax = plt.subplots(figsize=(14, 5))
+ 
+    fig, ax = plt.subplots(figsize=(14, 6))
  
     for i, (name, vals) in enumerate(metrics.items()):
-        ax.bar(x + i * width, vals, width, label=name, color=colors[i], alpha=0.9)
+        bars = ax.bar(x + i * width, vals, width, label=name, color=colors[i], alpha=0.9)
+        for bar, val in zip(bars, vals):
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + 0.01,
+                f'{val:.2f}',
+                ha='center', va='bottom', fontsize=7, color='#333333'
+            )
  
     ax.set_xticks(x + width)
     ax.set_xticklabels(classes, rotation=40, ha='right')
     ax.set_ylabel('Score')
     ax.set_xlabel('Class')
-    ax.set_ylim(0, 1.05)
-    ax.set_title(title, fontsize=14, fontweight='bold')
-    ax.legend()
+    ax.set_ylim(0, 1.12)
+    ax.set_title(title, fontsize=14, fontweight='bold', pad=32)
+ 
+    ax.legend(
+        loc='upper center',
+        bbox_to_anchor=(0.5, 1.08),
+        ncol=3,
+        fontsize=10,
+    )
+ 
     plt.tight_layout()
     plt.show()
 
