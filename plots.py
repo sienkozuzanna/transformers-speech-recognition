@@ -614,3 +614,71 @@ def plot_per_class_f1_comparison(model_results_map, classes=CLASSES, title='Per-
               ncol=len(model_names), fontsize=10)
     plt.tight_layout()
     plt.show()
+
+
+def plot_loss_and_f1_curves(results_dict, group_name=''):
+    """
+    Plot mean +- std train & valid loss and valid F1 cross seeds for each representation/param group.
+
+    Args:
+        results_dict: dict[key][seed] = {
+            'history': {
+                'train_loss': [...],
+                'valid_loss': [...],
+                'valid_f1':   [...],
+            }
+        }
+        group_name: label for the legend prefix
+    """
+    keys = list(results_dict.keys())
+    colors = sns.color_palette('deep', n_colors=len(keys))
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+    title = f'{group_name} — Loss & Validation F1'.strip(' —')
+    fig.suptitle(title, fontsize=15, fontweight='bold', y=1.02)
+
+    for idx, (key, seed_dict) in enumerate(results_dict.items()):
+        color = colors[idx]
+        label = f'{group_name}={key}' if group_name else str(key)
+
+        train_losses = np.array([v['history']['train_loss'] for v in seed_dict.values()])
+        valid_losses = np.array([v['history']['valid_loss'] for v in seed_dict.values()])
+        valid_f1s    = np.array([v['history']['valid_f1']   for v in seed_dict.values()])
+
+        epochs = range(1, train_losses.shape[1] + 1)
+
+        train_mean, train_std = train_losses.mean(axis=0), train_losses.std(axis=0)
+        valid_mean, valid_std = valid_losses.mean(axis=0), valid_losses.std(axis=0)
+
+        ax1.plot(epochs, train_mean, color=color, linewidth=2, linestyle='-',  label=f'{label} train')
+        ax1.fill_between(epochs, train_mean - train_std, train_mean + train_std, color=color, alpha=0.15)
+        ax1.plot(epochs, valid_mean, color=color, linewidth=2, linestyle='--', label=f'{label} valid')
+        ax1.fill_between(epochs, valid_mean - valid_std, valid_mean + valid_std, color=color, alpha=0.08)
+
+        mean_f1 = valid_f1s.mean(axis=0)
+        std_f1  = valid_f1s.std(axis=0)
+        best_ep = int(np.argmax(mean_f1)) + 1
+        best_f1 = mean_f1[best_ep - 1]
+
+        ax2.plot(epochs, mean_f1, color=color, linewidth=2, label=label)
+        ax2.fill_between(epochs, mean_f1 - std_f1, mean_f1 + std_f1, color=color, alpha=0.15)
+        ax2.axvline(best_ep, color=color, linestyle=':', linewidth=1.2, alpha=0.6)
+        ax2.scatter([best_ep], [best_f1], color=color, zorder=5)
+        ax2.annotate(f'best: {best_f1:.3f}',
+                     xy=(best_ep, best_f1),
+                     xytext=(8, 6), textcoords='offset points',
+                     fontsize=8, color=color)
+
+    ax1.set_title('Loss', fontsize=14, fontweight='bold')
+    ax1.set_xlabel('Epoch')
+    ax1.set_ylabel('Loss')
+    ax1.legend()
+
+    ax2.set_title('Validation F1', fontsize=14, fontweight='bold')
+    ax2.set_xlabel('Epoch')
+    ax2.set_ylabel('Macro F1')
+    ax2.set_ylim(0, 1)
+    ax2.legend()
+
+    plt.tight_layout()
+    plt.show()
