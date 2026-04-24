@@ -51,6 +51,48 @@ def extract_embeddings(model, dataset, device, batch_size=256):
 
     return np.concatenate(all_embs), np.concatenate(all_labels)
 
+def extract_embeddings_cnn_transformer(model, dataset, device, batch_size=256):
+    """
+    Extracts embeddings from CNNTransformer — passes input through CNN backbone, reshapes, projects, runs Transformer, applies pooling (before classifier).
+
+    Args:
+        - model: trained CNNTransformer model
+        - dataset: dataset to extract embeddings from
+        - device: device to run on
+        - batch_size: batch size for DataLoader
+
+    Returns:
+        - all_embs: numpy array [N, d_model]
+        - all_labels: numpy array [N]
+    """
+    model.eval()
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    all_embs, all_labels = [], []
+
+    with torch.no_grad():
+        for x, y in loader:
+            x = x.to(device)
+
+            h = model.cnn(x) 
+            B, C, F, T = h.shape
+            h = h.permute(0, 3, 1, 2)
+            h = h.reshape(B, T, C * F)
+            h = model.input_projection(h) 
+            h = h + model.positional_encoding[:, :h.size(1), :]
+            h = model.transformer(h)
+
+            if model.pooling == 'mean':
+                emb = h.mean(dim=1)
+            else:
+                attn = model.attention_pooling(h)
+                attn = torch.softmax(attn, dim=1)
+                emb = (h * attn).sum(dim=1)
+
+            all_embs.append(emb.cpu().numpy())
+            all_labels.append(y.numpy())
+
+    return np.concatenate(all_embs), np.concatenate(all_labels)
+
 def get_best_model(results, d_model):
     """Returns the best model for a given d_model based on test_macro_f1."""
     best_seed = max(results[d_model], key=lambda s: results[d_model][s]['test_macro_f1'])

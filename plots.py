@@ -294,8 +294,7 @@ def plot_metrics_comparison(summary_df, title='Accuracy, Macro F1 & Weighted F1 
     ax.set_xticks(x + width)
     ax.set_xticklabels(groups, fontsize=9)
     ax.set_ylabel('Score')
-    ax.set_ylim(max(0, summary_df[[c for c, *_ in metric_cols]].values.min() - 0.06),
-                min(1.0, summary_df[[c for c, *_ in metric_cols]].values.max() + 0.08))
+    ax.set_ylim(0, min(1.0, summary_df[[c for c, *_ in metric_cols]].values.max() + 0.08))
     ax.set_title(title, fontsize=14, fontweight='bold', pad=32)
     ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.08), ncol=3, fontsize=10)
     plt.tight_layout()
@@ -478,8 +477,7 @@ def plot_f1_comparison(results, param_name, param_name_short):
                      xytext=(6, 6), textcoords='offset points',
                      fontsize=8, color=color)
 
-    ax1.set_title(f'Validation Macro F1 per {param_name}',
-                  fontsize=14, fontweight='bold')
+    ax1.set_title(f'Validation Macro F1 per {param_name}', fontsize=14, fontweight='bold')
     ax1.set_xlabel('Epoch')
     ax1.set_ylabel('Macro F1')
     ax1.set_ylim(0, 1)
@@ -498,7 +496,7 @@ def plot_f1_comparison(results, param_name, param_name_short):
     ax2.set_xticks(x)
     ax2.set_xticklabels([str(param) for param in params], rotation=30)
     ax2.set_ylabel('Macro F1')
-    ax2.set_ylim(max(0, min(means) - 0.05), min(1.0, max(means) + 0.06))
+    ax2.set_ylim(0, min(1.0, max(means) + 0.06))
     ax2.grid(True, linestyle='--', alpha=0.5, axis='y')
     ax2.set_xlabel(param_name)
 
@@ -617,25 +615,11 @@ def plot_per_class_f1_comparison(model_results_map, classes=CLASSES, title='Per-
 
 
 def plot_loss_and_f1_curves(results_dict, group_name=''):
-    """
-    Plot mean +- std train & valid loss and valid F1 cross seeds for each representation/param group.
-
-    Args:
-        results_dict: dict[key][seed] = {
-            'history': {
-                'train_loss': [...],
-                'valid_loss': [...],
-                'valid_f1':   [...],
-            }
-        }
-        group_name: label for the legend prefix
-    """
     keys = list(results_dict.keys())
     colors = sns.color_palette('deep', n_colors=len(keys))
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
     title = f'{group_name} — Loss & Validation F1'.strip(' —')
-    fig.suptitle(title, fontsize=15, fontweight='bold', y=1.02)
 
     for idx, (key, seed_dict) in enumerate(results_dict.items()):
         color = colors[idx]
@@ -650,9 +634,9 @@ def plot_loss_and_f1_curves(results_dict, group_name=''):
         train_mean, train_std = train_losses.mean(axis=0), train_losses.std(axis=0)
         valid_mean, valid_std = valid_losses.mean(axis=0), valid_losses.std(axis=0)
 
-        ax1.plot(epochs, train_mean, color=color, linewidth=2, linestyle='-',  label=f'{label} train')
+        ax1.plot(epochs, train_mean, color=color, linewidth=2, linestyle='-')
         ax1.fill_between(epochs, train_mean - train_std, train_mean + train_std, color=color, alpha=0.15)
-        ax1.plot(epochs, valid_mean, color=color, linewidth=2, linestyle='--', label=f'{label} valid')
+        ax1.plot(epochs, valid_mean, color=color, linewidth=2, linestyle='--')
         ax1.fill_between(epochs, valid_mean - valid_std, valid_mean + valid_std, color=color, alpha=0.08)
 
         mean_f1 = valid_f1s.mean(axis=0)
@@ -660,7 +644,7 @@ def plot_loss_and_f1_curves(results_dict, group_name=''):
         best_ep = int(np.argmax(mean_f1)) + 1
         best_f1 = mean_f1[best_ep - 1]
 
-        ax2.plot(epochs, mean_f1, color=color, linewidth=2, label=label)
+        ax2.plot(epochs, mean_f1, color=color, linewidth=2)
         ax2.fill_between(epochs, mean_f1 - std_f1, mean_f1 + std_f1, color=color, alpha=0.15)
         ax2.axvline(best_ep, color=color, linestyle=':', linewidth=1.2, alpha=0.6)
         ax2.scatter([best_ep], [best_f1], color=color, zorder=5)
@@ -672,13 +656,27 @@ def plot_loss_and_f1_curves(results_dict, group_name=''):
     ax1.set_title('Loss', fontsize=14, fontweight='bold')
     ax1.set_xlabel('Epoch')
     ax1.set_ylabel('Loss')
-    ax1.legend()
 
     ax2.set_title('Validation F1', fontsize=14, fontweight='bold')
     ax2.set_xlabel('Epoch')
     ax2.set_ylabel('Macro F1')
     ax2.set_ylim(0, 1)
-    ax2.legend()
+
+    legend_handles = []
+    for i, key in enumerate(keys):
+        label = f'{group_name}={key}' if group_name else str(key)
+        legend_handles.append(Line2D([0], [0], color=colors[i], linewidth=2, linestyle='-',  label=f'{label} train'))
+        legend_handles.append(Line2D([0], [0], color=colors[i], linewidth=2, linestyle='--', label=f'{label} valid'))
+
+    fig.legend(
+        handles=legend_handles,
+        loc='upper center',
+        bbox_to_anchor=(0.5, 1.0),
+        ncol=len(keys) * 2,
+        fontsize=9,
+        title=group_name if group_name else None,
+    )
+    fig.suptitle(title, fontsize=15, fontweight='bold', y=1.06)
 
     plt.tight_layout()
     plt.show()
