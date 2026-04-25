@@ -31,6 +31,39 @@ def extract_attention_weights(model, dataset, device, batch_size=256):
 
     return np.concatenate(all_weights), np.concatenate(all_labels)
 
+def extract_attention_weights_cnn_transformer(model, dataset, device, batch_size=256):
+    """
+    Extracts attention pooling weights from CNNTransformer.
+    Only works for attention_pooling_linear and attention_pooling_sequential.
+
+    Returns:
+        - all_weights: numpy array [N, T] — attention weight per timestep
+        - all_labels:  numpy array [N]
+    """
+    model.eval()
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    all_weights, all_labels = [], []
+
+    with torch.no_grad():
+        for x, y in loader:
+            x = x.to(device)
+
+            h = model.cnn(x) 
+            B, C, F, T = h.shape
+            h = h.permute(0, 3, 1, 2)
+            h = h.reshape(B, T, C * F)
+            h = model.input_projection(h)
+            h = h + model.positional_encoding[:, :h.size(1), :]
+            h = model.transformer(h) 
+
+            attn = model.attention_pooling(h)
+            attn = torch.softmax(attn, dim=1).squeeze(-1)
+
+            all_weights.append(attn.cpu().numpy())
+            all_labels.append(y.numpy())
+
+    return np.concatenate(all_weights), np.concatenate(all_labels)
+
 
 def plot_attention_heatmap_comparison(attn_weights_per_pooling, class_names):
     """
