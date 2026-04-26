@@ -110,3 +110,24 @@ class CachedDataset(Dataset):
         return len(self.files)
     def __getitem__(self, i):
         return torch.load(self.files[i], weights_only=True)
+    
+class BackgroundNoiseDataset(Dataset):
+    def __init__(self, noise_dir, feature_config):
+        self.noise_dir = Path(noise_dir)
+        self.feature_config = feature_config
+        self.files = sorted(self.noise_dir.glob("*.wav"))
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, idx):
+        path = self.files[idx]
+
+        y, _ = librosa.load(
+            str(path),
+            sr=self.feature_config.sample_rate,
+            mono=True
+        )
+
+        y = torch.from_numpy(y).float().unsqueeze(0)
+        return y
