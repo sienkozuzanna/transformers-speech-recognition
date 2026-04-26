@@ -4,6 +4,7 @@ from torch.utils.data import Dataset
 import librosa
 from pathlib import Path
 from typing import Optional, Callable
+import random
 
 from .transforms import FeatureConfig
 
@@ -111,6 +112,8 @@ class CachedDataset(Dataset):
     def __getitem__(self, i):
         return torch.load(self.files[i], weights_only=True)
     
+# AUGMENTATION
+    
 class BackgroundNoiseDataset(Dataset):
     def __init__(self, noise_dir, feature_config):
         self.noise_dir = Path(noise_dir)
@@ -131,3 +134,85 @@ class BackgroundNoiseDataset(Dataset):
 
         y = torch.from_numpy(y).float().unsqueeze(0)
         return y
+
+class AddBackgroundNoiseSNRDataset(Dataset):
+    """
+    Dataset wrapper that adds real background noise to raw speech waveforms before feature extraction.
+
+    Parameters:
+        base_dataset:
+            Dataset returning raw speech samples as (x, y).
+
+        noise_dataset:
+            Dataset returning raw background noise waveforms from _background_noise_.
+
+        feature_config:
+            FeatureConfig object. It provides e.g. num_samples = 16000 for 1-second audio.
+
+        feature_transform:
+            Transform applied after noise mixing, e.g. MFCC + Normalize.
+
+        snr_db:
+            Signal-to-noise ratio in decibels.
+            None means no augmentation.
+            Higher SNR = weaker noise, lower SNR = stronger noise.
+    """
+
+    def __init__(self, base_dataset, noise_dataset, feature_config, feature_transform, snr_db=None):
+        self.base_dataset = base_dataset
+        self.noise_dataset = noise_dataset
+        self.feature_config = feature_config
+        self.feature_transform = feature_transform
+        self.snr_db = snr_db
+
+    def __len__(self):
+        return len(self.base_dataset)
+
+    def _sample_noise_chunk(self):
+        """
+        Randomly select a background noise file and extract a 1-second chunk.
+
+        If the noise recording is shorter than the target length, it is padded.
+        If it is longer, a random segment is selected.
+        """
+        noise = self.noise_dataset[random.randint(0, len(self.noise_dataset) - 1)]
+
+        target_len = self.feature_config.num_samples
+
+        if noise.shape[-1] < target_len:
+            noise = torch.nn.functional.pad(
+                noise,
+                (0, target_len - noise.shape[-1])
+            )
+
+        max_start = noise.shape[-1] - target_len
+        start = random.randint(0, max_start) if max_start > 0 else 0
+
+        return noise[:, start:start + target_len]
+
+    def __getitem__(self, idx):
+        """
+        Return one training sample.
+
+        For snr_db=None: returns clean transformed speech.
+
+        For snr_db=20/10/5: adds background noise scaled to the requested SNR, then applies the feature transform.
+        """
+        x, y = self.base_dataset[idx]
+
+        if self.snr_db is not None:
+            noise = self._sample_noise_chunk().to(dtype=x.dtype)
+
+            signal_power = torch.mean(x ** 2)
+            noise_power = torch.mean(noise ** 2) + 1e-8
+
+            snr_linear = 10 ** (self.snr_db / 10)
+            target_noise_power = signal_power / snr_linear
+
+            scale = torch.sqrt(target_noise_power / noise_power)
+
+            x = x + scale * noise
+
+        x = self.feature_transform(x)
+
+        return x, y
